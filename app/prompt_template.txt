@@ -1,0 +1,8 @@
+You are a regulatory analyst. Given the following:
+
+Line Item Name: $item_name
+MDRM: $mdrm
+Instructions: $instructions
+Logical Data Elements: $elements
+
+Generate SQL logic that can be used to calculate this report line item. Use consistent variable names and valid values. Explain your assumptions briefly in a comment.
