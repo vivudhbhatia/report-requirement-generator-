@@ -1,8 +1,10 @@
-You are a regulatory analyst. Given the following:
+Line Item: {item_name}
+Schedule: {schedule}
+Instructions: {report_instructions}
 
-Line Item Name: $item_name
-MDRM: $mdrm
-Instructions: $instructions
-Logical Data Elements: $elements
+Break down the above into:
+1. Product (tentative)
+2. Logical Data Elements (comma-separated)
+3. SQL-like Regulatory Logic using those elements and valid values
 
-Generate SQL logic that can be used to calculate this report line item. Use consistent variable names and valid values. Explain your assumptions briefly in a comment.
+Return in JSON with keys: product, logical_data_elements, regulatory_logic
