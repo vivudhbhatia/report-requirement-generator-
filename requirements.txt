@@ -1,1 +1,10 @@
+streamlit
+openai
+pdfplumber
+PyMuPDF
+langchain
+faiss-cpu
+sqlalchemy
+psycopg2-binary
+python-dotenv
 
