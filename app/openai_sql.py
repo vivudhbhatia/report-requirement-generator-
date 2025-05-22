@@ -12,21 +12,19 @@ Line Item: {row['line_item']} – {row['line_title']}
 Instructions:
 {row['instructions']}
 
-General Instructions:
-{row.get('general_instructions', 'N/A')}
+Please return the business requirements as a JSON object with these fields:
+- "Product": tentative product
+- "Logical_Data_Elements": list of data elements used
+- "Regulatory_Logic": SQL-style logic using those elements and valid values
 
-Glossary References:
-{row.get('glossary', 'N/A')}
-
-ASC References:
-{row.get('asc_references', 'N/A')}
-
-Instructions:
-Break down the business requirements for this line item. Output in JSON with:
-1. Product
-2. Logical Data Elements
-3. Regulatory Logic (SQL-style pseudocode)
+Example output format:
+{{
+  "Product": "Trust Preferred Securities",
+  "Logical_Data_Elements": ["instrument_type", "issuer_type", "maturity"],
+  "Regulatory_Logic": "SELECT SUM(amount) FROM liabilities WHERE instrument_type = 'trust preferred' AND issuer_type IN ('unconsolidated_spe', 'consolidated_spe')"
+}}
 """
+
     try:
         res = client.chat.completions.create(
             model="gpt-4",
