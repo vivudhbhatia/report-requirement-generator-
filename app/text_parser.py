@@ -1,37 +1,40 @@
 import fitz
 import re
 
-def pdf_to_text(pdf_path):
+def extract_toc_page_labels(pdf_path, max_pages=15):
+    toc_entries = []
     with fitz.open(pdf_path) as doc:
-        return "\n".join([page.get_text() for page in doc])
+        for page_index in range(min(max_pages, len(doc))):
+            text = doc[page_index].get_text()
+            lines = text.split("\n")
+            for line in lines:
+                # Relaxed pattern: match "Schedule ..." followed by any single token at end
+                if "Schedule" in line:
+                    match = re.match(r"(Schedule.*?)\s+(\S+)$", line.strip())
+                    if match:
+                        section, label = match.groups()
+                        toc_entries.append((section.strip(), label.strip()))
+    return toc_entries
 
-def detect_toc_keywords(text, max_lines=300):
-    """
-    Auto-detect section headers like 'Schedule C, Part I' or 'Schedule HI-A'
-    """
-    lines = text.splitlines()
-    toc_candidates = []
-    pattern = re.compile(r"Schedule\s+[A-Z0-9\-]+(?:,\s+Part\s+[IVXLCDM]+)?", re.IGNORECASE)
+def resolve_label_to_page_index(doc, target_label):
+    for i in range(len(doc)):
+        if doc[i].get_label() == target_label:
+            return i
+    return None
 
-    for line in lines[:max_lines]:
-        if pattern.search(line):
-            toc_candidates.append(line.strip())
-
-    return list(dict.fromkeys(toc_candidates))  # remove duplicates, preserve order
-
-def extract_sections_by_toc(text, toc_keywords):
-    sections = {}
-    lines = text.split("\n")
-
-    toc_indices = {}
-    for i, line in enumerate(lines):
-        for keyword in toc_keywords:
-            if keyword.lower() in line.lower():
-                toc_indices[keyword] = i
-
-    sorted_keys = sorted(toc_indices.items(), key=lambda x: x[1])
-    for idx, (title, start) in enumerate(sorted_keys):
-        end = sorted_keys[idx + 1][1] if idx + 1 < len(sorted_keys) else len(lines)
-        sections[title] = "\n".join(lines[start:end]).strip()
-
-    return sections
+def map_toc_to_page_ranges(pdf_path, max_pages=15):
+    with fitz.open(pdf_path) as doc:
+        toc_raw = extract_toc_page_labels(pdf_path, max_pages)
+        toc_mapped = {}
+        for i, (section, label) in enumerate(toc_raw):
+            start_index = resolve_label_to_page_index(doc, label)
+            if start_index is None:
+                continue
+            end_index = None
+            if i + 1 < len(toc_raw):
+                next_label = toc_raw[i + 1][1]
+                end_index = resolve_label_to_page_index(doc, next_label)
+            else:
+                end_index = len(doc)
+            toc_mapped[section] = (start_index, end_index)
+        return toc_mapped
