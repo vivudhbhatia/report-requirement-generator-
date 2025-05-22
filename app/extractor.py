@@ -1,30 +1,24 @@
 import re
 
-def build_section_index(text):
-    sections = {}
-    current_section = None
+def extract_blocks(text):
+    blocks = []
+    pattern = re.compile(r"(?P<header>(Schedule\s+[A-Z]+|Part\s+[IVXLC]+|[A-Z]\.\s.*?|\d+\.\s.*?))\n(?P<body>.*?)(?=\n[A-Z]\.\s|\n\d+\.\s|\Z)", re.DOTALL)
 
-    for line in text.splitlines():
-        match = re.match(r"(Schedule\s+[A-Z]+(?:-[A-Z]+)?)\s*[-–]?\s*(.+)?", line.strip())
-        if match:
-            current_section = match.group(1).strip()
-            sections[current_section] = ""
-        elif current_section:
-            sections[current_section] += line + "\n"
+    for match in pattern.finditer(text):
+        header = match.group("header").strip()
+        body = match.group("body").strip()
 
-    return sections
+        if re.search(r"Line\s+\d+|[A-Z]{1,3}\d{3,4}", body):
+            block_type = "line_item"
+        elif re.search(r"Column\s+\d+", body):
+            block_type = "column_based"
+        else:
+            block_type = "narrative"
 
-def extract_line_items(section_text):
-    pattern = r"([A-Z]{1,3}\d{3,4})\s+(.+?)(?=\n[A-Z]{1,3}\d{3,4}|\Z)"
-    matches = re.finditer(pattern, section_text, re.DOTALL | re.IGNORECASE)
-    items = []
-
-    for m in matches:
-        items.append({
-            "line_number": m.group(1).strip(),
-            "item_name": m.group(2).strip(),
-            "report_instructions": m.group(0).strip()
+        blocks.append({
+            "title": header,
+            "text": body,
+            "type": block_type
         })
 
-    return items
-
+    return blocks
