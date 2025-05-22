@@ -40,8 +40,18 @@ if st.session_state.structure:
 
             if st.button("Generate BRD"):
                 decoded = decode_line_logic(row)
-                st.markdown("### 🔍 GPT Output")
+                st.markdown("### 🧩 GPT Output")
                 st.json(decoded)
+
+                st.markdown("#### 🔍 Schedule-Level Filters")
+                st.code("
+".join(f"{k} = {v}" for k, v in decoded.get("Schedule_Level_Filters", {}).items()), language="sql")
+
+                st.markdown("#### 🧠 Logic Blocks")
+                for block in decoded.get("Regulatory_Logic_Blocks", []):
+                    st.markdown(f"**{block.get('Column')}**")
+                    st.code(block.get("Logic", ""), language="sql")
+
                 row.update(decoded)
                 row["Schedule"] = selected_schedule
                 row["Part"] = selected_part
