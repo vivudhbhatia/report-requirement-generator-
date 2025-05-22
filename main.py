@@ -2,7 +2,7 @@ import streamlit as st
 import tempfile
 from app.parser import extract_text_blocks
 from app.extractor import build_section_index, extract_line_items
-from app.openai_sql import decode_line_logic
+from app.openai_sql import decode_line_logic  # ← Updated import
 from app.db import save_to_supabase
 import os
 
