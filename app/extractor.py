@@ -1,24 +1,21 @@
 import re
 
-def extract_blocks(text):
-    blocks = []
-    pattern = re.compile(r"(?P<header>(Schedule\s+[A-Z]+|Part\s+[IVXLC]+|[A-Z]\.\s.*?|\d+\.\s.*?))\n(?P<body>.*?)(?=\n[A-Z]\.\s|\n\d+\.\s|\Z)", re.DOTALL)
+def extract_schedule_line_items(text, report_id):
+    schedule_pattern = r"(Schedule\s+[A-Z]+(?:-[A-Z]+)?)"
+    line_item_pattern = r"(Line\sItem\s+\d+[a-zA-Z\(\)]*)[\.\-\:]?\s+(.+?)\n(.*?)(?=\nLine\sItem\s+\d+|\nSchedule\s+[A-Z]|\Z)"
 
-    for match in pattern.finditer(text):
-        header = match.group("header").strip()
-        body = match.group("body").strip()
+    schedules = re.findall(schedule_pattern, text)
+    results = []
 
-        if re.search(r"Line\s+\d+|[A-Z]{1,3}\d{3,4}", body):
-            block_type = "line_item"
-        elif re.search(r"Column\s+\d+", body):
-            block_type = "column_based"
-        else:
-            block_type = "narrative"
-
-        blocks.append({
-            "title": header,
-            "text": body,
-            "type": block_type
-        })
-
-    return blocks
+    for schedule in set(schedules):
+        schedule_blocks = text.split(schedule)
+        for block in schedule_blocks[1:]:
+            for m in re.finditer(line_item_pattern, block, re.DOTALL):
+                results.append({
+                    "report_id": report_id,
+                    "schedule": schedule.strip(),
+                    "line_item": m.group(1).strip(),
+                    "line_title": m.group(2).strip(),
+                    "instructions": m.group(3).strip(),
+                })
+    return results
