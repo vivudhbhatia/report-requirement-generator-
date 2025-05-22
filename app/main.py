@@ -1,8 +1,7 @@
 import streamlit as st
 from app.parser import parse_pdf_from_file, parse_pdf_from_url
-from app.extractor import extract_line_items
-from app.openai_sql import generate_brd
-from app.db import save_to_supabase, query_supabase
+from app.extractor import extract_blocks
+from app.openai_sql import generate_brd_block
 import pandas as pd
 
 st.set_page_config(page_title="📄 Report BRD Generator", layout="wide")
@@ -11,42 +10,44 @@ st.title("📄 Report Instructions to SQL BRD")
 option = st.radio("Choose Input Method", ["📤 Upload PDF", "🔗 Provide URL"])
 text = ""
 
-if option == "📤 Upload PDF":
-    uploaded_file = st.file_uploader("Upload Report PDF", type="pdf")
-    if uploaded_file:
-        text = parse_pdf_from_file(uploaded_file)
+try:
+    if option == "📤 Upload PDF":
+        uploaded_file = st.file_uploader("Upload Report PDF", type="pdf")
+        if uploaded_file:
+            text = parse_pdf_from_file(uploaded_file)
 
-elif option == "🔗 Provide URL":
-    url = st.text_input("Paste the direct URL to the PDF")
-    if url and st.button("Fetch PDF"):
-        text = parse_pdf_from_url(url)
+    elif option == "🔗 Provide URL":
+        url = st.text_input("Paste the direct URL to the PDF")
+        if url and st.button("Fetch PDF"):
+            text = parse_pdf_from_url(url)
 
-if text:
-    st.success("✅ PDF parsed successfully.")
-    line_items = extract_line_items(text)
-    st.info(f"Found {len(line_items)} line items.")
+    if text:
+        st.success("✅ PDF parsed. Extracting instruction blocks...")
+        blocks = extract_blocks(text)
+        st.session_state["blocks"] = blocks
 
-    with st.spinner("Generating SQL BRD using OpenAI..."):
-        enriched = []
-        for row in line_items:
-            result = generate_brd(row)
-            row.update(result)
-            enriched.append(row)
-            save_to_supabase(row)
-        df = pd.DataFrame(enriched)
-        st.success("All rows processed and saved to Supabase.")
-        st.dataframe(df)
+        selected_indices = st.multiselect("Select blocks to process", options=list(range(len(blocks))),
+                                          format_func=lambda i: f"{blocks[i]['title']} ({blocks[i]['type']})")
 
-    if st.button("Download Current Output"):
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("Download CSV", csv, "report_brd_output.csv", "text/csv")
+        if selected_indices:
+            results = []
+            for i in selected_indices:
+                block = blocks[i]
+                st.markdown(f"### 🧠 Generating for: {block['title']} ({block['type']})")
+                st.text_area("Instruction Text", block["text"], height=200)
+                response, prompt = generate_brd_block(block)
+                results.append({
+                    "section": block["title"],
+                    "type": block["type"],
+                    "logic": response,
+                    "prompt": prompt
+                })
+                st.markdown("#### 💡 Extracted Logic")
+                st.code(response)
 
-st.divider()
-st.subheader("🔍 Search Report BRD Records")
-query_term = st.text_input("Enter MDRM, Line Item #, or Item Name")
-if query_term:
-    results = query_supabase(query_term)
-    if results:
-        st.dataframe(pd.DataFrame(results))
-    else:
-        st.warning("No results found.")
+            df = pd.DataFrame(results)
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Download Results as CSV", csv, "brd_output.csv", "text/csv")
+
+except Exception as e:
+    st.error(f"❌ Error: {e}")
