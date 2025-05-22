@@ -1,14 +1,18 @@
-import pdfplumber
-import requests
+import fitz  # PyMuPDF
 import tempfile
+import requests
 
 def parse_pdf_from_file(file):
-    with pdfplumber.open(file) as pdf:
-        return "\n".join([p.extract_text() for p in pdf.pages if p.extract_text()])
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(file.read())
+        tmp.flush()
+        doc = fitz.open(tmp.name)
+        return "\n".join([page.get_text() for page in doc])
 
 def parse_pdf_from_url(url):
     response = requests.get(url)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(response.content)
         tmp.flush()
-        return parse_pdf_from_file(tmp.name)
+        doc = fitz.open(tmp.name)
+        return "\n".join([page.get_text() for page in doc])
