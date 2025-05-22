@@ -1,53 +1,35 @@
 import streamlit as st
-from app.parser import parse_pdf_from_file, parse_pdf_from_url
-from app.extractor import extract_blocks
-from app.openai_sql import generate_brd_block
 import pandas as pd
+from app.parser import parse_pdf_from_file
+from app.extractor import extract_schedule_line_items
+from app.openai_sql import generate_brd_prompt
+from app.db import save_brd_row
 
-st.set_page_config(page_title="📄 Report BRD Generator", layout="wide")
-st.title("📄 Report Instructions to SQL BRD")
+st.set_page_config(page_title="📄 Schedule + Line Item BRD Generator", layout="wide")
+st.title("📄 Schedule + Line Item BRD Extractor")
 
-option = st.radio("Choose Input Method", ["📤 Upload PDF", "🔗 Provide URL"])
-text = ""
+uploaded_file = st.file_uploader("Upload Regulatory PDF", type="pdf")
+if uploaded_file:
+    text = parse_pdf_from_file(uploaded_file)
+    st.success("✅ File parsed")
 
-try:
-    if option == "📤 Upload PDF":
-        uploaded_file = st.file_uploader("Upload Report PDF", type="pdf")
-        if uploaded_file:
-            text = parse_pdf_from_file(uploaded_file)
+    report_id = st.text_input("Enter Report Name (e.g., FR Y-9C)")
+    if report_id:
+        line_items = extract_schedule_line_items(text, report_id)
+        df = pd.DataFrame(line_items)
 
-    elif option == "🔗 Provide URL":
-        url = st.text_input("Paste the direct URL to the PDF")
-        if url and st.button("Fetch PDF"):
-            text = parse_pdf_from_url(url)
+        selected_schedule = st.selectbox("Select Schedule", sorted(df['schedule'].unique()))
+        filtered = df[df['schedule'] == selected_schedule]
 
-    if text:
-        st.success("✅ PDF parsed. Extracting instruction blocks...")
-        blocks = extract_blocks(text)
-        st.session_state["blocks"] = blocks
+        selected_item = st.selectbox("Select Line Item", filtered['line_item'])
+        item_row = filtered[filtered['line_item'] == selected_item].iloc[0]
 
-        selected_indices = st.multiselect("Select blocks to process", options=list(range(len(blocks))),
-                                          format_func=lambda i: f"{blocks[i]['title']} ({blocks[i]['type']})")
+        st.markdown(f"**{item_row['line_title']}**")
+        st.text_area("Line Instructions", item_row['instructions'], height=250)
 
-        if selected_indices:
-            results = []
-            for i in selected_indices:
-                block = blocks[i]
-                st.markdown(f"### 🧠 Generating for: {block['title']} ({block['type']})")
-                st.text_area("Instruction Text", block["text"], height=200)
-                response, prompt = generate_brd_block(block)
-                results.append({
-                    "section": block["title"],
-                    "type": block["type"],
-                    "logic": response,
-                    "prompt": prompt
-                })
-                st.markdown("#### 💡 Extracted Logic")
-                st.code(response)
-
-            df = pd.DataFrame(results)
-            csv = df.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Download Results as CSV", csv, "brd_output.csv", "text/csv")
-
-except Exception as e:
-    st.error(f"❌ Error: {e}")
+        if st.button("🧠 Generate BRD with OpenAI"):
+            response, prompt = generate_brd_prompt(item_row)
+            st.markdown("### 🔍 OpenAI Output")
+            st.code(response)
+            save_brd_row(item_row, prompt, response)
+            st.success("✅ Saved to Supabase")
