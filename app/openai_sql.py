@@ -3,23 +3,36 @@ from openai import OpenAI
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def generate_brd_block(block):
-    base_prompt = f"Section: {block['title']}\n\nInstructions:\n{block['text']}"
+def generate_brd_prompt(row):
+    prompt = f"""
+Report: {row['report_id']}
+Schedule: {row['schedule']}
+Line Item: {row['line_item']} – {row['line_title']}
 
-    if block["type"] == "line_item":
-        prompt = base_prompt + "\n\nBreak down each line item into: Product, Logical Data Elements, SQL-like Regulatory Logic."
-    elif block["type"] == "column_based":
-        prompt = base_prompt + "\n\nExplain the logic for each column and how it maps to product or regulatory requirements. Output as JSON."
-    else:
-        prompt = base_prompt + "\n\nSummarize business logic and convert it to a structured SQL-like requirement including inferred data elements and valid values."
+Instructions:
+{row['instructions']}
 
+General Instructions:
+{row.get('general_instructions', 'N/A')}
+
+Glossary References:
+{row.get('glossary', 'N/A')}
+
+ASC References:
+{row.get('asc_references', 'N/A')}
+
+Instructions:
+Break down the business requirements for this line item. Output in JSON with:
+1. Product
+2. Logical Data Elements
+3. Regulatory Logic (SQL-style pseudocode)
+"""
     try:
-        response = client.chat.completions.create(
+        res = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
+            temperature=0.2
         )
-        content = response.choices[0].message.content
-        return content, prompt
+        return res.choices[0].message.content, prompt
     except Exception as e:
-        return f"Error: {str(e)}", prompt
+        return str(e), prompt
