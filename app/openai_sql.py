@@ -24,10 +24,10 @@ Return in JSON with keys: product, logical_data_elements, regulatory_logic
         )
         msg = res['choices'][0]['message']['content']
         json_output = eval(msg)
-        return json_output
+        return json_output, prompt, msg
     except Exception as e:
         return {
             "product": "Error",
             "logical_data_elements": [],
             "regulatory_logic": str(e)
-        }
+        }, prompt, str(e)
