@@ -44,13 +44,18 @@ if st.session_state.structure:
                 st.json(decoded)
 
                 st.markdown("#### 🔍 Schedule-Level Filters")
-                st.code("
-".join(f"{k} = {v}" for k, v in decoded.get("Schedule_Level_Filters", {}).items()), language="sql")
+                if decoded.get("Schedule_Level_Filters"):
+                    filters = "\n".join(f"{k} = '{v}'" for k, v in decoded["Schedule_Level_Filters"].items())
+                    st.code(filters, language="sql")
+                else:
+                    st.markdown("_No schedule-level filters_")
 
                 st.markdown("#### 🧠 Logic Blocks")
                 for block in decoded.get("Regulatory_Logic_Blocks", []):
-                    st.markdown(f"**{block.get('Column')}**")
-                    st.code(block.get("Logic", ""), language="sql")
+                    col = block.get("Column", "N/A")
+                    logic = block.get("Logic", "-- missing logic --")
+                    st.markdown(f"**{col}**")
+                    st.code(logic, language="sql")
 
                 row.update(decoded)
                 row["Schedule"] = selected_schedule
