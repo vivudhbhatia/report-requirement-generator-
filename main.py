@@ -2,19 +2,21 @@ import streamlit as st
 import tempfile
 from app.parser import extract_text_blocks
 from app.extractor import build_section_index, extract_line_items
-from app.openai_sql import decode_line_logic  # ← Updated import
+from app.openai_sql import decode_line_logic
 from app.db import save_to_supabase
 import os
 
 st.set_page_config(layout="wide")
 st.title("📄 Regulatory Report Extractor & Logic Generator")
 
+# Init session state
 if "section_index" not in st.session_state:
     st.session_state.section_index = {}
 
 if "line_items_by_schedule" not in st.session_state:
     st.session_state.line_items_by_schedule = {}
 
+# Upload and extract text from PDF
 uploaded_file = st.file_uploader("Upload Regulatory PDF", type="pdf")
 
 if uploaded_file and st.button("Extract"):
@@ -31,10 +33,17 @@ if uploaded_file and st.button("Extract"):
     }
     st.success("✅ PDF parsed and schedules loaded.")
 
+# Show dropdowns only after parsing
 if st.session_state.get("section_index"):
-    selected_schedule = st.selectbox("Select Schedule", list(st.session_state.section_index.keys()))
+    # Full schedule headers with simplified labels
+    label_map = {k: k.split("–")[0].strip() for k in st.session_state.section_index.keys()}
+    reverse_map = {v: k for k, v in label_map.items()}
+
+    selected_label = st.selectbox("Select Schedule", list(label_map.values()))
+    selected_schedule = reverse_map[selected_label]
 
     rows = st.session_state.line_items_by_schedule.get(selected_schedule, [])
+
     if rows:
         selected_line = st.selectbox("Select Line Item", [r["Line #"] for r in rows])
         row = next((r for r in rows if r["Line #"] == selected_line), None)
@@ -51,3 +60,5 @@ if st.session_state.get("section_index"):
                 row["Schedule"] = selected_schedule
                 row["Report"] = uploaded_file.name.split(".pdf")[0]
                 save_to_supabase(row)
+    else:
+        st.warning("⚠️ No line items found for this schedule.")
