@@ -1,8 +1,7 @@
 import re
 
 def extract_line_items(text):
-    pattern = r"(?:MDRM\s*:\s*(?P<mdrm>[A-Z0-9]+))?.*?" \
-              r"Line\s+(?P<line_number>\d+)\s*[-:–]?\s*(?P<item_name>[^\n]+)\n(?P<instruction>.*?)(?=\n\s*Line\s+\d+|\Z)"
+    pattern = r"(?:MDRM\s*:\s*(?P<mdrm>[A-Z0-9]+))?.*?"               r"Line\s+(?P<line_number>\d+)\s*[-:–]?\s*(?P<item_name>[^\n]+)\n(?P<instruction>.*?)(?=\n\s*Line\s+\d+|\Z)"
 
     matches = re.finditer(pattern, text, re.DOTALL | re.IGNORECASE)
     items = []
@@ -18,4 +17,3 @@ def extract_line_items(text):
         })
 
     return items
-
