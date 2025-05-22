@@ -3,19 +3,16 @@ import os
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def generate_brd(row):
-    prompt = f"""
-Line Item: {row['item_name']}
-Schedule: {row['schedule']}
-Instructions: {row['report_instructions']}
+def generate_brd_block(block):
+    base_prompt = f"Section: {block['title']}\n\nInstructions:\n{block['text']}"
 
-Break down the above into:
-1. Product (tentative)
-2. Logical Data Elements (comma-separated)
-3. SQL-like Regulatory Logic using those elements and valid values
+    if block["type"] == "line_item":
+        prompt = base_prompt + "\n\nBreak down each line item into: Product, Logical Data Elements, SQL-like Regulatory Logic."
+    elif block["type"] == "column_based":
+        prompt = base_prompt + "\n\nExplain the logic for each column and how it maps to product or regulatory requirements. Output as JSON."
+    else:
+        prompt = base_prompt + "\n\nSummarize business logic and convert it to a structured SQL-like requirement including inferred data elements and valid values."
 
-Return in JSON with keys: product, logical_data_elements, regulatory_logic
-"""
     try:
         res = openai.ChatCompletion.create(
             model="gpt-4",
@@ -23,11 +20,6 @@ Return in JSON with keys: product, logical_data_elements, regulatory_logic
             temperature=0.3
         )
         msg = res['choices'][0]['message']['content']
-        json_output = eval(msg)
-        return json_output, prompt, msg
+        return msg, prompt
     except Exception as e:
-        return {
-            "product": "Error",
-            "logical_data_elements": [],
-            "regulatory_logic": str(e)
-        }, prompt, str(e)
+        return f"Error: {str(e)}", prompt
