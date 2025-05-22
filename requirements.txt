@@ -1,6 +1,6 @@
 streamlit
 openai
-pdfplumber
+
 PyMuPDF
 langchain
 faiss-cpu
