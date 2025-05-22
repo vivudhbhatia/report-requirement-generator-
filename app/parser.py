@@ -10,13 +10,14 @@ def parse_pdf_from_file(file):
         return "\n".join([page.get_text() for page in doc])
 
 def parse_pdf_from_url(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers, allow_redirects=True)
 
-    response = requests.get(url, headers=headers)
-    
-    if response.status_code != 200 or b'%PDF' not in response.content[:1024]:
+    content_type = response.headers.get("Content-Type", "")
+    if "application/pdf" not in content_type:
+        raise ValueError(f"❌ URL did not return a PDF (Content-Type: {content_type})")
+
+    if response.status_code != 200 or b"%PDF" not in response.content[:1024]:
         raise ValueError("❌ URL did not return a valid PDF file.")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -27,3 +28,4 @@ def parse_pdf_from_url(url):
             return "\n".join([page.get_text() for page in doc])
         except Exception as e:
             raise ValueError(f"❌ Failed to open PDF file. Reason: {str(e)}")
+
