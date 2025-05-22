@@ -15,15 +15,16 @@ def build_section_index(text):
     return sections
 
 def extract_line_items(section_text):
-    pattern = r"(Line\s+(\d+))[:\s\-]+(.+?)(?=\nLine\s+\d+|\Z)"
+    pattern = r"([A-Z]{1,3}\d{3,4})\s+(.+?)(?=\n[A-Z]{1,3}\d{3,4}|\Z)"
     matches = re.finditer(pattern, section_text, re.DOTALL | re.IGNORECASE)
     items = []
 
     for m in matches:
         items.append({
-            "line_number": m.group(2).strip(),
-            "item_name": m.group(3).strip(),
+            "line_number": m.group(1).strip(),
+            "item_name": m.group(2).strip(),
             "report_instructions": m.group(0).strip()
         })
 
     return items
+
