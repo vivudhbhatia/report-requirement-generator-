@@ -14,18 +14,11 @@ def parse_pdf_from_url(url):
     response = requests.get(url, headers=headers, allow_redirects=True)
 
     content_type = response.headers.get("Content-Type", "")
-    if "application/pdf" not in content_type:
+    if "application/pdf" not in content_type and b"%PDF" not in response.content[:1024]:
         raise ValueError(f"❌ URL did not return a PDF (Content-Type: {content_type})")
-
-    if response.status_code != 200 or b"%PDF" not in response.content[:1024]:
-        raise ValueError("❌ URL did not return a valid PDF file.")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(response.content)
         tmp.flush()
-        try:
-            doc = fitz.open(tmp.name)
-            return "\n".join([page.get_text() for page in doc])
-        except Exception as e:
-            raise ValueError(f"❌ Failed to open PDF file. Reason: {str(e)}")
-
+        doc = fitz.open(tmp.name)
+        return "\n".join([page.get_text() for page in doc])
