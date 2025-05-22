@@ -1,33 +1,26 @@
+import openai
 import os
-from openai import OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-def generate_brd_prompt(row):
-    prompt = f"""
-You are a regulatory analyst. The following content is from a regulatory report.
+def decode_line_logic(row):
+    prompt = f"""Extract the PRODUCT, LOGICAL DATA ELEMENTS, and SQL-LIKE REGULATORY LOGIC from the instruction below:
 
-Report: {row['report_id']}
-Schedule/Section: {row['schedule']}
-Line Item: {row['line_item']} – {row['line_title']}
+---
+INSTRUCTION:
+{row['Report Instructions']}
+---
 
-Instructions:
-{row['instructions']}
-
-Break down the business requirements into the following JSON format:
+Return result in this format:
 {{
-  "Product": "...",
-  "Logical_Data_Elements": ["..."],
-  "Regulatory_Logic": "SELECT ... WHERE ..."
-}}
-Ensure Regulatory_Logic is SQL-like and uses appropriate filters and data elements.
-"""
-    try:
-        res = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
-        )
-        return res.choices[0].message.content, prompt
-    except Exception as e:
-        return str(e), prompt
+    "Product": "...",
+    "Logical Data Elements": ["...", "..."],
+    "Regulatory Logic": "SELECT ... WHERE ..."
+}}"""
+
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message.content
