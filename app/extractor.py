@@ -1,25 +1,20 @@
 import re
 
-def extract_schedule_line_items(text, report_id):
-    schedule_pattern = re.compile(r"(Schedule\s+[A-Z]+(?:-[A-Z]+)?)", re.IGNORECASE)
-    line_item_pattern = re.compile(r"(Line\sItem\s+\d+[a-zA-Z\(\)]*)[\.\-\:]?\s+(.+?)\n(.*?)(?=\nLine\sItem\s+\d+|\nSchedule\s+[A-Z]|\Z)", re.DOTALL)
+def extract_schedule_line_items(text, report_id="UNKNOWN"):
+    schedule_pattern = re.compile(r"(Schedule\s+[A-Z0-9\-\.]+|Section\s+[A-Z0-9]+|Part\s+[A-Z]+)", re.IGNORECASE)
+    line_item_pattern = re.compile(r"(Line\sItem\s+\d+[a-zA-Z\(\)]*|Item\s+\d+[a-zA-Z\(\)]*)[\.\-\:]?\s+(.+?)\n(.*?)(?=\n(Line\sItem|Item)\s+\d+|\nSchedule\s+|\nSection\s+|\Z)", re.DOTALL)
 
-    schedules = schedule_pattern.findall(text)
     all_blocks = []
-    seen = set()
+    matches = list(schedule_pattern.finditer(text))
 
-    for match in schedule_pattern.finditer(text):
+    for i, match in enumerate(matches):
         schedule = match.group(1).strip()
-        if schedule in seen:
-            continue
-        seen.add(schedule)
         start = match.start()
-        next_match = next((m for m in schedule_pattern.finditer(text, start + 1)), None)
-        end = next_match.start() if next_match else len(text)
+        end = matches[i+1].start() if i+1 < len(matches) else len(text)
         block_text = text[start:end]
 
-        matches = list(line_item_pattern.finditer(block_text))
-        if not matches:
+        item_matches = list(line_item_pattern.finditer(block_text))
+        if not item_matches:
             all_blocks.append({
                 "report_id": report_id,
                 "schedule": schedule,
@@ -27,7 +22,7 @@ def extract_schedule_line_items(text, report_id):
                 "line_title": "No line items detected",
                 "instructions": block_text.strip()
             })
-        for m in matches:
+        for m in item_matches:
             all_blocks.append({
                 "report_id": report_id,
                 "schedule": schedule,
