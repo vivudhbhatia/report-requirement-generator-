@@ -5,26 +5,23 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def generate_brd_prompt(row):
     prompt = f"""
+You are a regulatory analyst. The following content is from a regulatory report.
+
 Report: {row['report_id']}
-Schedule: {row['schedule']}
+Schedule/Section: {row['schedule']}
 Line Item: {row['line_item']} – {row['line_title']}
 
 Instructions:
 {row['instructions']}
 
-Please return the business requirements as a JSON object with these fields:
-- "Product": tentative product
-- "Logical_Data_Elements": list of data elements used
-- "Regulatory_Logic": SQL-style logic using those elements and valid values
-
-Example output format:
+Break down the business requirements into the following JSON format:
 {{
-  "Product": "Trust Preferred Securities",
-  "Logical_Data_Elements": ["instrument_type", "issuer_type", "maturity"],
-  "Regulatory_Logic": "SELECT SUM(amount) FROM liabilities WHERE instrument_type = 'trust preferred' AND issuer_type IN ('unconsolidated_spe', 'consolidated_spe')"
+  "Product": "...",
+  "Logical_Data_Elements": ["..."],
+  "Regulatory_Logic": "SELECT ... WHERE ..."
 }}
+Ensure Regulatory_Logic is SQL-like and uses appropriate filters and data elements.
 """
-
     try:
         res = client.chat.completions.create(
             model="gpt-4",
