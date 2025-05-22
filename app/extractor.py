@@ -11,18 +11,19 @@ def build_section_index(text):
 
 def extract_line_items(schedule_text):
     items = []
-    pattern = r"Line\s+Item\s+(\d+(\([a-z]\))?)\s+(.+?)(?=(?:Line\s+Item\s+\d|\Z))"
-    matches = re.finditer(pattern, schedule_text, re.DOTALL)
+    # Flexible pattern for "Line Item", "Item", or numbered labels
+    pattern = r"(Line\s+Item\s+\d+[a-zA-Z\(\)]*|Item\s+\d+[a-zA-Z\(\)]*)[\.:\-\s]+(.+?)(?=\n(Line\s+Item|Item)\s+\d+|\nSchedule\s+|$)"
+    matches = re.finditer(pattern, schedule_text, re.DOTALL | re.IGNORECASE)
 
     for match in matches:
-        line_number = match.group(1).strip()
-        item_name = match.group(3).strip().replace("\n", " ")
-        instructions = match.group(0).strip()
+        label = match.group(1).strip()
+        title = match.group(2).strip().replace("\n", " ")
+        full_block = match.group(0).strip()
 
         items.append({
-            "Line #": line_number,
-            "Item Name": item_name,
-            "Report Instructions": instructions,
+            "Line #": label,
+            "Item Name": title,
+            "Report Instructions": full_block
         })
 
     return items
