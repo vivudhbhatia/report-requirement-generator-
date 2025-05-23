@@ -1,8 +1,8 @@
 import streamlit as st
 import tempfile
 import pandas as pd
-from extract_page_markers import extract_page_markers
-from extract_instruction_table import parse_toc_from_lines, extract_section_and_line_items
+from app.extract_page_markers import extract_page_markers
+from app.extract_instruction_table import parse_toc_from_lines, extract_section_and_line_items
 
 st.set_page_config(layout="wide")
 st.title("📄 PDF Instruction Extractor with Footer-Aware TOC")
