@@ -1,64 +1,32 @@
-import os
-import json
-from openai import OpenAI
+import streamlit as st
+import tempfile
+import pandas as pd
+from extract_page_markers import extract_page_markers
+from extract_instruction_table import parse_toc_from_lines, extract_section_and_line_items
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+st.set_page_config(layout="wide")
+st.title("📄 PDF Instruction Extractor")
 
-def decode_line_logic(row):
-    prompt = f"""
-You are a regulatory analyst.
+uploaded_file = st.file_uploader("Upload a Regulatory PDF", type="pdf")
 
-Below is an instruction block from a regulatory report.
-────────────────────────────────────────────────────────
-Report: {row.get('Report', 'UNKNOWN')}
-Schedule: {row.get('Schedule', 'UNKNOWN')}
-Part: {row.get('Part', 'N/A')}
-Section: {row.get('Section', 'N/A')}
-Line Item: {row.get('Line #')} – {row.get('Item Name')}
+if uploaded_file and st.button("Extract Table"):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(uploaded_file.read())
+        tmp.flush()
+        pdf_path = tmp.name
 
-Instructions:
-{row.get('Report Instructions')}
-────────────────────────────────────────────────────────
+    with st.spinner("🔍 Extracting page markers..."):
+        toc_lines = extract_page_markers(pdf_path, max_pages=8)
+        if not toc_lines:
+            st.error("❌ No TOC-style page markers found in the PDF.")
+        else:
+            st.success(f"✅ Found {len(toc_lines)} TOC entries.")
+            toc_entries = parse_toc_from_lines(toc_lines)
 
-Return output in this strict JSON format:
+            with st.spinner("📄 Extracting line item instructions..."):
+                df = extract_section_and_line_items(pdf_path, toc_entries)
+                st.success("✅ Extraction complete.")
+                st.dataframe(df)
 
-{{
-  "Product": "string",
-  "Logical_Data_Elements": ["element1", "element2", "..."],
-  "Schedule_Level_Filters": {{
-    "FILTER_1": "value",
-    "FILTER_2": "value"
-  }},
-  "Regulatory_Logic_Blocks": [
-    {{
-      "Logic": "SQL-like expression with filters and group by...",
-      "Column": "Column number or label"
-    }},
-    ...
-  ]
-}}
-
-DO NOT add commentary or explanation. Return only the JSON object.
-"""
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
-        )
-        result_text = response.choices[0].message.content
-        return json.loads(result_text)
-
-    except Exception as e:
-        return {
-            "Product": "ERROR",
-            "Logical_Data_Elements": [],
-            "Schedule_Level_Filters": {},
-            "Regulatory_Logic_Blocks": [
-                {
-                    "Logic": f"OpenAI API call failed: {e}",
-                    "Column": "N/A"
-                }
-            ]
-        }
+                csv = df.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Download as CSV", csv, file_name="extracted_instruction_table.csv", mime="text/csv")
