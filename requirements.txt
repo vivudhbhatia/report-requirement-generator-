@@ -11,5 +11,5 @@ python-dotenv
 supabase
 pandas
 requests
-
+pytesseract
 
