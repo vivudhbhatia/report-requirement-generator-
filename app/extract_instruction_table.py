@@ -2,7 +2,7 @@ import fitz  # PyMuPDF
 import re
 import pandas as pd
 import argparse
-from extract_page_markers import extract_page_markers  # Assumes you import from the other script
+from app.extract_page_markers import extract_page_markers  # Assumes you import from the other script
 
 def parse_toc_from_lines(toc_lines):
     toc = []
