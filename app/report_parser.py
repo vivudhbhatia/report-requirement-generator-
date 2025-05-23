@@ -52,26 +52,26 @@ def extract_instructions(doc, section_df):
     text_block
 )
 
-for match in matches:
-    groups = match.groupdict()
-    column_header = groups.get("code", "").strip()
-    description = groups.get("desc", "").strip()
-    start = match.start()
-
-    following_text = text_block[start:]
-    split = re.split(r'\n(?:[A-Z]\. )?.*?\((?:Columns?|Item)\s+\d+[a-zA-Z\-–, ()]*\)', following_text)
-    instruction = split[0].strip()
-
-    rows.append({
-        "Report Code": "Auto-detected",
-        "Report Name": "FFIEC Instruction Report",
-        "Report General Instructions": "N/A",
-        "Section/Schedule ID - Name": section_name,
-        "Section/Schedule General Instructions": "N/A",
-        "Line Item Code - Description": description or "N/A",
-        "Column ID - Description": column_header or "N/A",
-        "Item or Column Instructions": instruction or "N/A"
-    })
+        for match in matches:
+            groups = match.groupdict()
+            column_header = groups.get("code", "").strip()
+            description = groups.get("desc", "").strip()
+            start = match.start()
+        
+            following_text = text_block[start:]
+            split = re.split(r'\n(?:[A-Z]\. )?.*?\((?:Columns?|Item)\s+\d+[a-zA-Z\-–, ()]*\)', following_text)
+            instruction = split[0].strip()
+        
+            rows.append({
+                "Report Code": "Auto-detected",
+                "Report Name": "FFIEC Instruction Report",
+                "Report General Instructions": "N/A",
+                "Section/Schedule ID - Name": section_name,
+                "Section/Schedule General Instructions": "N/A",
+                "Line Item Code - Description": description or "N/A",
+                "Column ID - Description": column_header or "N/A",
+                "Item or Column Instructions": instruction or "N/A"
+            })
 
 
 
