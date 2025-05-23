@@ -1,32 +1,29 @@
 import streamlit as st
 import tempfile
+import fitz
 import pandas as pd
-from app.extract_page_markers import extract_page_markers
-from app.extract_instruction_table import parse_toc_from_lines, extract_section_and_line_items
+from app import report_parser
 
 st.set_page_config(layout="wide")
-st.title("📄 PDF Instruction Extractor with Footer-Aware TOC")
+st.title("📊 FFIEC Instruction Extractor")
 
-uploaded_file = st.file_uploader("Upload a Regulatory PDF", type="pdf")
+uploaded_file = st.file_uploader("Upload an FFIEC PDF", type="pdf")
 
-if uploaded_file and st.button("Extract Table"):
+if uploaded_file and st.button("Extract Instructions"):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(uploaded_file.read())
         tmp.flush()
-        pdf_path = tmp.name
+        doc = fitz.open(tmp.name)
 
-    with st.spinner("🔍 Scanning ToC and footers for section markers..."):
-        toc_lines = extract_page_markers(pdf_path, max_pages=15)
-        if not toc_lines:
-            st.error("❌ No markers found in ToC or footers.")
-        else:
-            st.success(f"✅ Found {len(toc_lines)} markers (ToC or footer-based).")
-            toc_entries = parse_toc_from_lines(toc_lines)
+    with st.spinner("🔍 Detecting section marker ranges..."):
+        marker_df = report_parser.extract_section_marker_ranges(doc)
+        st.success("✅ Section marker ranges extracted.")
 
-            with st.spinner("📄 Extracting line item instructions..."):
-                df = extract_section_and_line_items(pdf_path, toc_entries)
-                st.success(f"✅ Extracted {len(df)} entries.")
-                st.dataframe(df)
+    with st.spinner("📄 Extracting detailed instructions..."):
+        instruction_df = report_parser.extract_instructions_from_doc(doc, marker_df)
+        st.success(f"✅ Extracted {len(instruction_df)} rows.")
 
-                csv = df.to_csv(index=False).encode("utf-8")
-                st.download_button("📥 Download as CSV", csv, file_name="extracted_instruction_table.csv", mime="text/csv")
+        st.dataframe(instruction_df)
+
+        csv = instruction_df.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download CSV", csv, file_name="structured_instructions.csv", mime="text/csv")
