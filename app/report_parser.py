@@ -47,17 +47,20 @@ def extract_instructions(doc, section_df):
 
         text_block = "\n".join(doc.load_page(p).get_text() for p in range(start_page, end_page + 1))
 
-        matches = re.finditer(r'(?P<desc>.*?)\s*\((?P<code>Column[s]?\s+\d+[a-zA-Z\-–, ]*|Item\s+\d+[a-zA-Z\-–()]*)\)', text_block)
+        matches = re.finditer(
+    r'(?P<desc>.*?)\s*\((?P<code>Column[s]?\s+\d+[a-zA-Z\-–, ]*|Item\s+\d+[a-zA-Z\-–()]*)\)',
+    text_block
+)
 
-        for match in matches:
-            column_header = match.group("code").strip()
-            description = match.group("desc").strip()
-            start = match.start()
+for match in matches:
+    groups = match.groupdict()
+    column_header = groups.get("code", "").strip()
+    description = groups.get("desc", "").strip()
+    start = match.start()
 
-            # Look ahead for next match or end
-            following_text = text_block[start:]
-            split = re.split(r'\n(?:[A-Z]\. )?.*?\((?:Columns?|Item)\s+\d+[a-zA-Z\-–, ()]*\)', following_text)
-            instruction = split[0].strip()
+    following_text = text_block[start:]
+    split = re.split(r'\n(?:[A-Z]\. )?.*?\((?:Columns?|Item)\s+\d+[a-zA-Z\-–, ()]*\)', following_text)
+    instruction = split[0].strip()
 
     rows.append({
         "Report Code": "Auto-detected",
@@ -65,10 +68,11 @@ def extract_instructions(doc, section_df):
         "Report General Instructions": "N/A",
         "Section/Schedule ID - Name": section_name,
         "Section/Schedule General Instructions": "N/A",
-        "Line Item Code - Description": description,
-        "Column ID - Description": column_header,
-        "Item or Column Instructions": instruction
+        "Line Item Code - Description": description or "N/A",
+        "Column ID - Description": column_header or "N/A",
+        "Item or Column Instructions": instruction or "N/A"
     })
+
 
 
     return pd.DataFrame(rows)
