@@ -14,7 +14,6 @@ def parse_toc_from_lines(toc_lines):
             toc.append((code, title))
     return toc
 
-
 def extract_section_and_line_items(pdf_path, toc_entries, max_pages=100):
     doc = fitz.open(pdf_path)
     results = []
@@ -52,7 +51,6 @@ def extract_section_and_line_items(pdf_path, toc_entries, max_pages=100):
 
     return pd.DataFrame(results)
 
-
 def find_page_by_marker(doc, marker, max_pages):
     for i in range(min(max_pages, len(doc))):
         text = doc.load_page(i).get_text()
@@ -60,20 +58,14 @@ def find_page_by_marker(doc, marker, max_pages):
             return i
     return 0
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract line item instructions from PDF.")
     parser.add_argument("pdf_path", help="Path to the input PDF.")
     parser.add_argument("--max_toc_pages", type=int, default=6, help="Number of pages to scan for TOC.")
     args = parser.parse_args()
 
-    # Step 1: Extract TOC markers from PDF
     toc_lines = extract_page_markers(args.pdf_path, args.max_toc_pages)
-
-    # Step 2: Convert TOC lines to structured (code, name) pairs
     toc_entries = parse_toc_from_lines(toc_lines)
-
-    # Step 3: Extract instructions table
     df = extract_section_and_line_items(args.pdf_path, toc_entries)
     df.to_csv("extracted_instruction_table.csv", index=False)
     print("✅ Instruction table saved as extracted_instruction_table.csv")
