@@ -1,12 +1,13 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 
 import streamlit as st
 import tempfile
 import fitz
 import pandas as pd
 from app import report_parser
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 st.set_page_config(layout="wide")
 st.title("📘 FFIEC Instruction Parser")
