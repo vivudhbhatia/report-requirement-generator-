@@ -5,25 +5,25 @@ import pandas as pd
 from app import report_parser
 
 st.set_page_config(layout="wide")
-st.title("📊 FFIEC Instruction Extractor")
+st.title("📘 FFIEC Instruction Parser")
 
-uploaded_file = st.file_uploader("Upload an FFIEC PDF", type="pdf")
+uploaded_file = st.file_uploader("Upload an FFIEC PDF Report", type="pdf")
 
-if uploaded_file and st.button("Extract Instructions"):
+if uploaded_file and st.button("Extract Instruction Table"):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(uploaded_file.read())
         tmp.flush()
         doc = fitz.open(tmp.name)
 
-    with st.spinner("🔍 Detecting section marker ranges..."):
-        marker_df = report_parser.extract_section_marker_ranges(doc)
-        st.success("✅ Section marker ranges extracted.")
+    with st.spinner("🔍 Extracting section marker ranges..."):
+        section_df = report_parser.extract_section_marker_ranges(doc)
+        st.success(f"✅ Detected {len(section_df)} unique sections.")
 
-    with st.spinner("📄 Extracting detailed instructions..."):
-        instruction_df = report_parser.extract_instructions_from_doc(doc, marker_df)
-        st.success(f"✅ Extracted {len(instruction_df)} rows.")
+    with st.spinner("📄 Parsing detailed column or item instructions..."):
+        result_df = report_parser.extract_instructions(doc, section_df)
+        st.success(f"✅ Extracted {len(result_df)} instruction entries.")
 
-        st.dataframe(instruction_df)
+        st.dataframe(result_df)
 
-        csv = instruction_df.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Download CSV", csv, file_name="structured_instructions.csv", mime="text/csv")
+        csv = result_df.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Download Extracted CSV", csv, file_name="structured_instructions.csv", mime="text/csv")
