@@ -1,67 +1,32 @@
 import streamlit as st
 import tempfile
-from app.toc_parser import map_toc_to_page_ranges
-from app.extractor import extract_line_or_column_items
-from app.openai_sql import decode_line_logic
-from app.db import save_to_supabase
-import fitz
+import pandas as pd
+from extract_page_markers import extract_page_markers
+from extract_instruction_table import parse_toc_from_lines, extract_section_and_line_items
 
 st.set_page_config(layout="wide")
-st.title("📄 ToC-Aware Page-Scoped Regulatory Report Extractor")
+st.title("📄 PDF Instruction Extractor with Footer-Aware TOC")
 
-if "section_pages" not in st.session_state:
-    st.session_state.section_pages = {}
+uploaded_file = st.file_uploader("Upload a Regulatory PDF", type="pdf")
 
-uploaded_file = st.file_uploader("Upload Regulatory PDF", type="pdf")
-
-if uploaded_file and st.button("Extract Sections from ToC"):
+if uploaded_file and st.button("Extract Table"):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(uploaded_file.read())
         tmp.flush()
-        toc_map = map_toc_to_page_ranges(tmp.name, max_pages=5)
-        st.session_state.section_pages = toc_map
-        st.session_state.pdf_path = tmp.name
-        st.success(f"✅ Mapped {len(toc_map)} sections from ToC.")
+        pdf_path = tmp.name
 
-if st.session_state.get("section_pages"):
-    selected_section = st.selectbox("Select Section", list(st.session_state.section_pages.keys()))
-    start, end = st.session_state.section_pages[selected_section]
+    with st.spinner("🔍 Scanning ToC and footers for section markers..."):
+        toc_lines = extract_page_markers(pdf_path, max_pages=15)
+        if not toc_lines:
+            st.error("❌ No markers found in ToC or footers.")
+        else:
+            st.success(f"✅ Found {len(toc_lines)} markers (ToC or footer-based).")
+            toc_entries = parse_toc_from_lines(toc_lines)
 
-    with fitz.open(st.session_state.pdf_path) as doc:
-        page_text = "\n".join([doc[i].get_text() for i in range(start, end)])
+            with st.spinner("📄 Extracting line item instructions..."):
+                df = extract_section_and_line_items(pdf_path, toc_entries)
+                st.success(f"✅ Extracted {len(df)} entries.")
+                st.dataframe(df)
 
-    rows = extract_line_or_column_items(page_text)
-
-    if rows:
-        selected_line = st.selectbox("Select Line/Column", [r["Line #"] for r in rows])
-        row = next((r for r in rows if r["Line #"] == selected_line), None)
-
-        if row:
-            st.subheader(f"🧠 SQL Logic for {selected_line}")
-            st.text_area("Line Instructions", row["Report Instructions"], height=200)
-
-            if st.button("Generate BRD"):
-                decoded = decode_line_logic(row)
-                st.markdown("### 🧩 GPT Output")
-                st.json(decoded)
-
-                st.markdown("#### 🔍 Schedule-Level Filters")
-                if decoded.get("Schedule_Level_Filters"):
-                    filters = "\n".join(f"{k} = '{v}'" for k, v in decoded["Schedule_Level_Filters"].items())
-                    st.code(filters, language="sql")
-                else:
-                    st.markdown("_No schedule-level filters_")
-
-                st.markdown("#### 🧠 Logic Blocks")
-                for block in decoded.get("Regulatory_Logic_Blocks", []):
-                    col = block.get("Column", "N/A")
-                    logic = block.get("Logic", "-- missing logic --")
-                    st.markdown(f"**{col}**")
-                    st.code(logic, language="sql")
-
-                row.update(decoded)
-                row["Section"] = selected_section
-                row["Report"] = uploaded_file.name.split(".pdf")[0]
-                save_to_supabase(row)
-    else:
-        st.warning("⚠️ No line or column items found in this section.")
+                csv = df.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Download as CSV", csv, file_name="extracted_instruction_table.csv", mime="text/csv")
