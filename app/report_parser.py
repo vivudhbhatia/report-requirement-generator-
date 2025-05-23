@@ -50,14 +50,14 @@ def extract_instructions(doc, section_df):
         matches = re.finditer(r'(?P<desc>.*?)\s*\((?P<code>Column[s]?\s+\d+[a-zA-Z\-–, ]*|Item\s+\d+[a-zA-Z\-–()]*)\)', text_block)
 
         for match in matches:
-    column_header = match.group("code").strip()
-    description = match.group("desc").strip()
-    start = match.start()
+            column_header = match.group("code").strip()
+            description = match.group("desc").strip()
+            start = match.start()
 
-    # Look ahead for next match or end
-    following_text = text_block[start:]
-    split = re.split(r'\n(?:[A-Z]\. )?.*?\((?:Columns?|Item)\s+\d+[a-zA-Z\-–, ()]*\)', following_text)
-    instruction = split[0].strip()
+            # Look ahead for next match or end
+            following_text = text_block[start:]
+            split = re.split(r'\n(?:[A-Z]\. )?.*?\((?:Columns?|Item)\s+\d+[a-zA-Z\-–, ()]*\)', following_text)
+            instruction = split[0].strip()
 
     rows.append({
         "Report Code": "Auto-detected",
